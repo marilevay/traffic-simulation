@@ -23,7 +23,7 @@ class TrafficNetwork:
         self.graph = graph
         self.cars = cars
 
-    def load_road_network(self, address=None, dist=1000, network_type="drive"):
+    def load_road_network(self, address=None, dist=200, network_type="drive"):
         self.graph = ox.graph_from_address(
             address,
             dist=dist,
