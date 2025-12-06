@@ -100,9 +100,9 @@ def plot_congestion_time_series(avg_densities, top_k: int = 5, ax=None, network=
         if network is not None and hasattr(network, "describe_edge"):
             info = network.describe_edge(edge_key)
             street = info.get("street_name", "unknown street")
-            label = f"{street}"
+            label = f"{street} (k={edge_key[2]})"
         else:
-            label = f"edge {edge_key[0]}→{edge_key[1]}"
+            label = f"edge {edge_key[0]}→{edge_key[1]} (k={edge_key[2]})"
 
         ax.plot(timesteps, series, label=label)
 
