@@ -235,7 +235,7 @@ class TrafficNetwork:
         -------
             The figure and axes created by ox.plot_graph
         """
-        fig, ax = ox.plot_graph(self.graph, figsize=(10, 10))
+        fig, ax = ox.plot_graph(self.graph, figsize=(15, 15))
         return fig, ax
 
     def init_cars(self, num_cars: int | None = None):
@@ -286,7 +286,7 @@ class TrafficNetwork:
 
         return self.cars
 
-    def plot_network_with_traffic(self):
+    def plot_network_with_osmnx(self):
         """Plot the network with edges colored and scaled by traffic density.
 
         Edge colors are determined by the density on each edge relative to
@@ -299,7 +299,6 @@ class TrafficNetwork:
             The figure and axes created by ox.plot_graph
         """
         edge_colors = []
-        edge_widths = []
 
         counts = self.edge_car_counts()
 
@@ -313,18 +312,17 @@ class TrafficNetwork:
         if max_density <= 0:
             max_density = 1.0
 
-        # Build colors and widths per edge
+        # Build colors per edge (constant width everywhere)
         for (u, v, _), density in zip(self.graph.edges(keys=True), densities):
             count = counts.get((u, v, 0), 0)
             norm_density = density / max_density if max_density > 0 else 0.0
             edge_colors.append(plt.cm.Reds(norm_density))
-            edge_widths.append(1 + count)
 
         fig, ax = ox.plot_graph(
             self.graph,
-            figsize=(10, 10),
+            figsize=(15, 15),
             edge_color=edge_colors,
-            edge_linewidth=edge_widths,
+            edge_linewidth=2.0,
             show=False,
             close=False,
         )
@@ -374,7 +372,7 @@ class TrafficNetwork:
             "v_coord": (v_lat, v_lon),
         }
 
-    def plot_network(self):
+    def plot_network_with_networkx(self):
         """Plot the network using NetworkX with edges colored by density
 
         This provides an alternative visualization that uses networkx.draw

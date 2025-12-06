@@ -1,6 +1,7 @@
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import osmnx as ox
+import networkx as nx
 from tqdm import tqdm
 
 
@@ -11,17 +12,17 @@ def run_multiple_simulations(network_factory, num_runs: int = 10, num_steps: int
     ----------
     network_factory: callable
         Zero-argument function that returns a freshly initialized
-        TrafficNetwork with graph and cars already set up.
+        TrafficNetwork with graph and cars already set up
     num_runs: int, default 10
-        Number of independent simulation runs to perform.
+        Number of independent simulation runs to perform
     num_steps: int, default 50
-        Number of timesteps per run.
+        Number of timesteps per run
 
     Returns
     -------
     dict
         Mapping (u, v, k) edge keys to a list of average densities over
-        time, where each list has length num_steps.
+        time, where each list has length num_steps
     """
     if num_runs <= 0:
         raise ValueError("num_runs must be positive")
@@ -100,9 +101,11 @@ def plot_congestion_time_series(avg_densities, top_k: int = 5, ax=None, network=
         if network is not None and hasattr(network, "describe_edge"):
             info = network.describe_edge(edge_key)
             street = info.get("street_name", "unknown street")
-            label = f"{street} (k={edge_key[2]})"
+            u = info["u"]
+            v = info["v"]
+            label = f"{street} ({u}→{v})"
         else:
-            label = f"edge {edge_key[0]}→{edge_key[1]} (k={edge_key[2]})"
+            label = f"edge {u}→{v} (k={k})"
 
         ax.plot(timesteps, series, label=label)
 
@@ -136,7 +139,15 @@ def animate_traffic(network_factory, num_steps: int = 50, interval_ms: int = 200
         The created animation object
     """
     network = network_factory()
-    edge_keys = list(network.graph.edges(keys=True))
+    G = network.graph
+    edge_keys = list(G.edges(keys=True))
+
+    # Precompute node positions (use OSM coordinates if available)
+    nodes_data = list(G.nodes(data=True))
+    if nodes_data and "x" in nodes_data[0][1] and "y" in nodes_data[0][1]:
+        pos = {n: (d["x"], d["y"]) for n, d in nodes_data}
+    else:
+        pos = nx.spring_layout(G, seed=0)
 
     fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -146,26 +157,29 @@ def animate_traffic(network_factory, num_steps: int = 50, interval_ms: int = 200
         counts = network.edge_car_counts()
         max_count = max(counts.values()) if counts else 1
 
-        edge_colors = []
-        edge_widths = []
+        # Build edge list and normalized colors based on counts
+        edge_list = []
+        edge_values = []
         for (u, v, k) in edge_keys:
-            count = counts.get((u, v, k), 0)
-            norm = count / max_count if max_count > 0 else 0.0
-            edge_colors.append(plt.cm.Reds(norm))
-            edge_widths.append(1 + count)
+            edge_list.append((u, v))
+            edge_values.append(counts.get((u, v, k), 0))
+
+        # avoid division by zero
+        if max_count <= 0:
+            max_count = 1
+
+        norms = [val / max_count for val in edge_values]
+        cmap = plt.cm.Reds
+        edge_colors = [cmap(n) for n in norms]
 
         ax.clear()
-        ox.plot_graph(network.graph, ax=ax, node_size=0, edge_color=edge_colors, edge_linewidth=edge_widths, show=False, close=False)
+        nx.draw(G, pos=pos, ax=ax, node_size=1, edgelist=edge_list, edge_color=edge_colors, width=2.0, with_labels=False)
         ax.set_title(f"Traffic congestion – step {frame_idx + 1}")
         return ax.collections
 
-    anim = animation.FuncAnimation(
-        fig,
-        update,
-        frames=num_steps,
-        interval=interval_ms,
-        blit=False,
-    )
+    # wrap frames with tqdm so we can also see a progress bar here
+    frame_iter = tqdm(range(num_steps), desc="Animating traffic", unit="frame")
+    anim = animation.FuncAnimation(fig, update, frames=frame_iter, interval=interval_ms, blit=False)
 
     if save_path is not None:
         anim.save(save_path)

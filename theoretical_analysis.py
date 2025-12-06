@@ -86,7 +86,7 @@ class TheoreticalTrafficAnalysis:
     def plot_network_centrality(
         self,
         top_k: int = 20,
-        figsize: tuple[int, int] = (12, 8),
+        figsize: tuple[int, int] = (15, 15),
         focus_on_top_edges: bool = True,
         padding: float = 0.0005,
     ):
