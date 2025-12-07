@@ -14,7 +14,7 @@ def run_traffic_experiment(
     """ Run a traffic experiment with a specified number of runs, steps, cars, and distance """
     def network_factory():
         net = TrafficNetwork(num_cars=num_cars)
-        net.load_road_network('Market St, San Francisco, CA', dist=dist, network_type='drive')
+        net.load_road_network('Esmeralda, Buenos Aires, Argentina', dist=dist, network_type='drive')
         net.add_travel_time_attribute()
         net.init_cars()
         return net
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     # Factory to build a fresh network for each run
     def network_factory():
         net = TrafficNetwork(num_cars=num_cars)
-        net.load_road_network('Market St, San Francisco, CA', dist=dist, network_type='drive')
+        net.load_road_network('Esmeralda, Buenos Aires, Argentina', dist=dist, network_type='drive')
         net.add_travel_time_attribute()
         net.init_cars()
         return net
