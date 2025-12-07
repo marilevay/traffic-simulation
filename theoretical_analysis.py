@@ -119,7 +119,7 @@ class TheoreticalTrafficAnalysis:
                 edge_colors.append('red')
                 edge_widths.append(3 + centrality * 5)
             else:
-                edge_colors.append(plt.cm.Reds(norm_centrality))
+                edge_colors.append(plt.cm.viridis(norm_centrality))
                 edge_widths.append(0.5 + centrality * 3)
 
         # create visualization
@@ -162,7 +162,7 @@ class TheoreticalTrafficAnalysis:
 
         # colorbar
         sm = mpl.cm.ScalarMappable(
-            cmap=mpl.cm.Reds,
+            cmap=mpl.cm.viridis,
             norm=mpl.colors.Normalize(vmin=0, vmax=max_centrality)
         )
         sm.set_array([])

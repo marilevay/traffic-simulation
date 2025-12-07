@@ -169,7 +169,8 @@ def animate_traffic(network_factory, num_steps: int = 50, interval_ms: int = 200
             max_count = 1
 
         norms = [val / max_count for val in edge_values]
-        cmap = plt.cm.Reds
+        # use reversed plasma so highest congestion is darkest, matching plot_density_snapshot
+        cmap = plt.cm.plasma_r
         edge_colors = [cmap(n) for n in norms]
 
         ax.clear()

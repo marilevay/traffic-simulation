@@ -130,14 +130,15 @@ def plot_density_snapshot(
         densities.append(time_avg.get((u, v, k), 0.0))
 
     # Normalize again for the colormap (uses same max_density)
+    # Use reversed plasma so the darkest colors correspond to highest density
     norm = mpl.colors.Normalize(vmin=0, vmax=max_density)
-    cmap = plt.cm.Reds
+    cmap = plt.cm.plasma_r
     edge_colors = [cmap(norm(d)) for d in densities]
 
     fig, ax = plt.subplots(figsize=(15, 15))
     nx.draw(G, pos=pos, ax=ax, node_size=1, edgelist=edge_list, edge_color=edge_colors, width=2.0, with_labels=False)
 
-    # Colorbar for time-averaged density
+    # Colorbar for time-averaged density (same plasma_r colormap)
     sm = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
     cbar = fig.colorbar(sm, ax=ax)
