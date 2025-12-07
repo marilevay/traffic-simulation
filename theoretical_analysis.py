@@ -19,8 +19,8 @@ from simulation.classes import TrafficNetwork
 
 
 class TheoreticalTrafficAnalysis:
-    """Theoretical analysis of traffic patterns using centrality measures.
-
+    """
+    Theoretical analysis of traffic patterns using centrality measures.
     """
 
     def __init__(self, network: TrafficNetwork):
