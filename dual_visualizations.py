@@ -14,7 +14,7 @@ import networkx as nx
 import numpy as np
 
 from simulation.classes import TrafficNetwork
-from simulation.helpers import run_multiple_simulations
+from simulation.helpers import plot_congestion_time_series, run_multiple_simulations
 from theoretical_analysis import TheoreticalTrafficAnalysis
 
 EdgeKey = Tuple[int, int, int]
@@ -22,8 +22,8 @@ EdgeKey = Tuple[int, int, int]
 
 @dataclass
 class VisualizationConfig:
-    top_k: int = 10
-    figsize: Tuple[int, int] = (14, 7)
+    top_k: int = 5
+    figsize: Tuple[int, int] = (14, 8)
     cmap: str = "Reds"
     highlight_color: str = "#33C3F0"
     base_linewidth: float = 1.0
@@ -111,10 +111,10 @@ def _draw_edge_metric(
 
 
 def visualize_theoretical_vs_empirical(
-    address: str = "Turk Street, San Francisco, CA",
-    dist: int = 400,
-    num_cars: int = 100,
-    num_steps: int = 80,
+    address: str = "Esmeralda, Buenos Aires, Argentina",
+    dist: int = 800,
+    num_cars: int = 500,
+    num_steps: int = 200,
     num_runs: int = 20,
     config: VisualizationConfig | None = None,
 ):
@@ -141,7 +141,11 @@ def visualize_theoretical_vs_empirical(
     )
     empirical_metric = _metric_from_avg_densities(avg_densities)
 
-    fig, (ax_theory, ax_empirical) = plt.subplots(1, 2, figsize=cfg.figsize, constrained_layout=True)
+    fig = plt.figure(figsize=(cfg.figsize[0], cfg.figsize[1] * 1.4))
+    ax_theory = fig.add_subplot(2, 2, 1)
+    ax_empirical = fig.add_subplot(2, 2, 2)
+    ax_theory_ts = fig.add_subplot(2, 2, 3)
+    ax_empirical_ts = fig.add_subplot(2, 2, 4)
 
     _draw_edge_metric(
         ax_theory,
@@ -161,7 +165,31 @@ def visualize_theoretical_vs_empirical(
         normalize=True,
     )
 
-    return fig, (ax_theory, ax_empirical)
+    plot_congestion_time_series(
+        avg_densities,
+        top_k=cfg.top_k,
+        ax=ax_empirical_ts,
+        network=base_network,
+    )
+    ax_empirical_ts.set_title("Top empirical edges – density over time")
+
+    theory_series: Dict[EdgeKey, List[float]] = {}
+    constant_length = num_steps if num_steps > 0 else 1
+    for edge_key, value in edge_betweenness.items():
+        theory_series[edge_key] = [value] * constant_length
+
+    plot_congestion_time_series(
+        theory_series,
+        top_k=cfg.top_k,
+        ax=ax_theory_ts,
+        network=base_network,
+    )
+    ax_theory_ts.set_ylabel("Relative importance (normalized)")
+    ax_theory_ts.set_title("Top theoretical edges – relative importance")
+
+    fig.tight_layout()
+
+    return fig, (ax_theory, ax_empirical, ax_theory_ts, ax_empirical_ts)
 
 
 if __name__ == "__main__":
