@@ -183,7 +183,7 @@ def visualize_theoretical_vs_empirical(
         return net
 
     # Run multiple simulations and collect empirical traffic density data
-    avg_densities = run_multiple_simulations(
+    avg_densities, all_runs = run_multiple_simulations(
         network_factory=factory,
         num_runs=num_runs,
         num_steps=num_steps,
