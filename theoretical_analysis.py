@@ -86,14 +86,12 @@ class TheoreticalTrafficAnalysis:
     def plot_network_centrality(
         self,
         top_k: int = 20,
-        figsize: tuple[int, int] = (15, 15),
+        figsize: tuple[int, int] = (12, 8),
         focus_on_top_edges: bool = True,
         padding: float = 0.0005,
     ):
         """
         Visualize the network with edges colored by betweenness centrality.
-
-    
         """
         if self.edge_betweenness is None:
             self.compute_edge_betweenness()
@@ -119,7 +117,7 @@ class TheoreticalTrafficAnalysis:
                 edge_colors.append('red')
                 edge_widths.append(3 + centrality * 5)
             else:
-                edge_colors.append(plt.cm.viridis(norm_centrality))
+                edge_colors.append(plt.cm.Reds(norm_centrality))
                 edge_widths.append(0.5 + centrality * 3)
 
         # create visualization
@@ -162,7 +160,7 @@ class TheoreticalTrafficAnalysis:
 
         # colorbar
         sm = mpl.cm.ScalarMappable(
-            cmap=mpl.cm.viridis,
+            cmap=mpl.cm.Reds,
             norm=mpl.colors.Normalize(vmin=0, vmax=max_centrality)
         )
         sm.set_array([])
