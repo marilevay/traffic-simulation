@@ -316,7 +316,7 @@ class TrafficNetwork:
         for (u, v, _), density in zip(self.graph.edges(keys=True), densities):
             count = counts.get((u, v, 0), 0)
             norm_density = density / max_density if max_density > 0 else 0.0
-            edge_colors.append(plt.cm.viridis(norm_density))
+            edge_colors.append(plt.cm.plasma(norm_density))
 
         fig, ax = ox.plot_graph(
             self.graph,
@@ -329,7 +329,7 @@ class TrafficNetwork:
 
         # Add a colorbar that reflects density values
         sm = mpl.cm.ScalarMappable(
-            cmap=mpl.cm.Reds,
+            cmap=mpl.cm.plasma,
             norm=mpl.colors.Normalize(vmin=0, vmax=max_density),
         )
         sm.set_array([])
@@ -405,7 +405,7 @@ class TrafficNetwork:
             max_density = 1.0
 
         norm = mpl.colors.Normalize(vmin=0, vmax=max_density)
-        cmap = plt.cm.viridis
+        cmap = plt.cm.plasma
         edge_colors = [cmap(norm(d)) for d in densities]
 
         fig, ax = plt.subplots(figsize=(10, 10))
