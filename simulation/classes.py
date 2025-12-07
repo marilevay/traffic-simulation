@@ -52,19 +52,7 @@ class TrafficNetwork:
     def load_road_network(self, address=None, dist=100, network_type="drive"):
         """Load a road network around a given address using OSMnx.
 
-        Parameters
-        ----------
-        address: str, optional
-            Geocodable address string ("Market St, San Francisco, CA").
-        dist: int, default 100
-            Search radius around the address, in meters.
-        network_type: str, default "drive"
-            Type of street network to download ("drive", "walk").
 
-        Returns
-        -------
-        networkx.MultiDiGraph
-            The loaded road network assigned to self.graph
         """
         self.graph = ox.graph_from_address(
             address,
