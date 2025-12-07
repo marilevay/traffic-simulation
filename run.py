@@ -30,24 +30,35 @@ def run_traffic_experiment(
     plt.show()
     return avg_densities
 
-# Create traffic animation
 def create_traffic_animation(
+    network,
+    avg_densities,
     num_steps: int = 50,
-    num_cars: int = 5000,
     interval_ms: int = 200,
     save_path: str | None = None,
-    dist: int = 200,
 ):
-    """ Create a traffic animation with a specified number of steps, cars, and distance """
-    def network_factory():
-        net = TrafficNetwork(num_cars=num_cars)
-        net.load_road_network('Market St, San Francisco, CA', dist=dist, network_type='drive')
-        net.add_travel_time_attribute()
-        net.init_cars()
-        return net
+    """Create a traffic animation using pre-computed avg_densities.
 
+    Parameters
+    ----------
+    network: TrafficNetwork
+        A network instance providing the graph structure
+    avg_densities: dict
+        Mapping (u, v, k) -> list of density values over time
+    num_steps: int, default 50
+        Number of frames in the animation
+    interval_ms: int, default 200
+        Delay between frames in milliseconds
+    save_path: str, optional
+        If provided, save the animation to this path
+
+    Returns
+    -------
+        The animation object
+    """
     anim = animate_traffic(
-        network_factory=network_factory,
+        network=network,
+        avg_densities=avg_densities,
         num_steps=num_steps,
         interval_ms=interval_ms,
         save_path=save_path,
@@ -56,34 +67,29 @@ def create_traffic_animation(
     return anim
 
 def plot_density_snapshot(
-    num_steps: int = 20,
-    num_cars: int = 1000,
-    dist: int = 400,
-    num_runs: int = 1,
+    network,
+    avg_densities,
     save_path: str | None = None,
 ):
-    """Run simulation(s) and plot a static, time-averaged normalized density snapshot.
+    """Plot a static, time-averaged normalized density snapshot.
 
-    This constructs TrafficNetwork instances via a small factory, runs one or
-    more simulations, then computes the time-averaged density for each edge
-    over all timesteps and runs. The final plot colors each edge according to
-    this normalized, time-averaged density.
+    This function takes pre-computed avg_densities from run_multiple_simulations
+    and visualizes the time-averaged density for each edge.
+
+    Parameters
+    ----------
+    network: TrafficNetwork
+        A network instance providing the graph structure
+    avg_densities: dict
+        Mapping (u, v, k) -> list of density values over time
+    save_path: str, optional
+        If provided, save the figure to this path
+
+    Returns
+    -------
+    fig, ax
+        The matplotlib figure and axes
     """
-    # Factory to build a fresh network for each run
-    def network_factory():
-        net = TrafficNetwork(num_cars=num_cars)
-        net.load_road_network("Market St, San Francisco, CA", dist=dist, network_type="drive")
-        net.add_travel_time_attribute()
-        net.init_cars()
-        return net
-
-    # Average densities over time (and runs) using existing helper
-    avg_densities = run_multiple_simulations(
-        network_factory=network_factory,
-        num_runs=num_runs,
-        num_steps=num_steps,
-    )
-
     # Time-average per edge: scalar density per edge
     time_avg = {}
     for edge_key, series in avg_densities.items():
@@ -91,9 +97,7 @@ def plot_density_snapshot(
 
     if not time_avg:
         # Fallback: nothing to plot
-        net = network_factory()
-        # show default OSMnx plot 
-        fig, ax = net.plot_road_network()
+        fig, ax = network.plot_road_network()
         plt.show()
         return fig, ax
 
@@ -102,20 +106,9 @@ def plot_density_snapshot(
     if max_density <= 0:
         max_density = 1.0
 
-    # Build a sample network just for plotting (same graph structure)
-    net = network_factory()
-    edge_keys = list(net.graph.edges(keys=True))
-
-    edge_colors = []
-    edge_widths = []
-    for ek in edge_keys:
-        d = time_avg.get(ek, 0.0)
-        norm = d / max_density
-        edge_colors.append(plt.cm.Reds(norm))
-        edge_widths.append(1.0 + 3.0 * norm)
-
     # Use NetworkX to plot with node coordinates if available
-    G = net.graph
+    G = network.graph
+    edge_keys = list(G.edges(keys=True))
     nodes_data = list(G.nodes(data=True))
     if nodes_data and "x" in nodes_data[0][1] and "y" in nodes_data[0][1]:
         pos = {n: (d["x"], d["y"]) for n, d in nodes_data}
@@ -129,7 +122,7 @@ def plot_density_snapshot(
         edge_list.append((u, v))
         densities.append(time_avg.get((u, v, k), 0.0))
 
-    # Normalize again for the colormap (uses same max_density)
+    # Normalize for the colormap (uses same max_density)
     # Use reversed plasma so the darkest colors correspond to highest density
     norm = mpl.colors.Normalize(vmin=0, vmax=max_density)
     cmap = plt.cm.plasma_r
@@ -151,27 +144,48 @@ def plot_density_snapshot(
     return fig, ax
 
 if __name__ == "__main__":
-    run_traffic_experiment(
-        num_runs=5,
-        num_steps=50,
-        num_cars=1000,
-        top_k=3,
-        dist=400,
+    # Run the main experiment once to get avg_densities
+    num_runs = 20
+    num_steps = 800
+    num_cars = 1000
+    top_k = 3
+    dist = 400
+
+    # Factory to build a fresh network for each run
+    def network_factory():
+        net = TrafficNetwork(num_cars=num_cars)
+        net.load_road_network('Market St, San Francisco, CA', dist=dist, network_type='drive')
+        net.add_travel_time_attribute()
+        net.init_cars()
+        return net
+
+    # Run multiple simulations to get averaged densities
+    avg_densities = run_multiple_simulations(
+        network_factory=network_factory,
+        num_runs=num_runs,
+        num_steps=num_steps,
     )
-    # NetworkX-based density snapshot
+
+    # Use a sample network for plotting and labeling
+    sample_network = network_factory()
+
+    # STEP 1: Time-series congestion plot
+    plot_congestion_time_series(avg_densities, top_k=top_k, network=sample_network, save_path="congestion_time_series.png")
+    plt.show()
+
+    # STEP 2: NetworkX-based density snapshot
     plot_density_snapshot(
-        num_steps=50,
-        num_cars=1000,
-        dist=400,
-        num_runs=5,
+        network=sample_network,
+        avg_densities=avg_densities,
         save_path="density_snapshot.png",
     )
-    # Uncomment to also generate an animation video
+
+    # STEP 3: Traffic animation video
     create_traffic_animation(
-        num_steps=50,
-        num_cars=1000,
+        network=sample_network,
+        avg_densities=avg_densities,
+        num_steps=num_steps,
         interval_ms=800,
         save_path="road_network.mp4",
-        dist=400,
     )
 

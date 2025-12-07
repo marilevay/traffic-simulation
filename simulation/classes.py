@@ -24,7 +24,7 @@ class Car:
         # Track position and speed
         self.current_edge = None  # (u, v) tuple or None if at node
         self.position_on_edge = 0.0  # Distance traveled along current edge (meters)
-        self.speed = 5.0  # Current speed in mph
+        self.speed = 5.0  # Current speed in kph
 
 class TrafficNetwork:
     """Traffic simulation on an OSMnx road network with density-based congestion.
@@ -151,7 +151,7 @@ class TrafficNetwork:
         car: Car
             The car whose speed is being updated.
         max_speed: float, default 5.0
-            Free-flow speed (units consistent with edge lengths, like mph)
+            Free-flow speed (units consistent with edge lengths, like kph)
         """
         if car.current_edge is None:
             car.speed = max_speed
@@ -282,7 +282,7 @@ class TrafficNetwork:
             
             # Show average speed
             avg_speed = sum(car.speed for car in self.cars if not car.parked) / max(moving, 1)
-            print(f"  Average speed: {avg_speed:.2f} mph")
+            print(f"  Average speed: {avg_speed:.2f} kph")
 
         return self.cars
 

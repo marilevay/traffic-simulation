@@ -55,7 +55,7 @@ def run_multiple_simulations(network_factory, num_runs: int = 10, num_steps: int
     return averages
 
 
-def plot_congestion_time_series(avg_densities, top_k: int = 5, ax=None, network=None):
+def plot_congestion_time_series(avg_densities, top_k: int = 5, ax=None, network=None, save_path: str | None = None):
     """Plot time series of density for the most congested edges.
 
     Parameters
@@ -71,6 +71,8 @@ def plot_congestion_time_series(avg_densities, top_k: int = 5, ax=None, network=
     network: TrafficNetwork, optional
         If provided, its describe_edge(edge_key) method is used to build
         human-readable labels (e.g., street names) for plotted edges.
+    save_path: str, optional
+        If provided, save the figure to this path
 
     Returns
     -------
@@ -115,30 +117,33 @@ def plot_congestion_time_series(avg_densities, top_k: int = 5, ax=None, network=
     ax.legend(loc="best", fontsize="small")
     ax.grid(True, linestyle=":", alpha=0.5)
 
+    if save_path is not None:
+        fig = ax.get_figure()
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+
     return ax
 
 
-def animate_traffic(network_factory, num_steps: int = 50, interval_ms: int = 200, save_path: str | None = None):
-    """Create an animation of traffic congestion evolving over time.
+def animate_traffic(network, avg_densities, num_steps: int = 50, interval_ms: int = 200, save_path: str | None = None):
+    """Create an animation of traffic congestion using averaged simulation data.
 
     Parameters
     ----------
-    network_factory: callable
-        Zero-argument function that returns a freshly initialized
-        TrafficNetwork with graph and cars already set up
+    network: TrafficNetwork
+        A network instance providing the graph structure/geometry
+    avg_densities: dict
+        Mapping (u, v, k) -> list of density values over time (from run_multiple_simulations)
     num_steps: int, default 50
         Number of frames (timesteps) in the animation
     interval_ms: int, default 200
         Delay between frames in milliseconds
     save_path: str, optional
-        If provided, the animation is saved to this file path (for
-        example, an mp4 or gif). Otherwise it's not saved
+        If provided, the animation is saved to this file path
 
     Returns
     -------
         The created animation object
     """
-    network = network_factory()
     G = network.graph
     edge_keys = list(G.edges(keys=True))
 
@@ -149,27 +154,28 @@ def animate_traffic(network_factory, num_steps: int = 50, interval_ms: int = 200
     else:
         pos = nx.spring_layout(G, seed=0)
 
+    # Determine global max density across all time and edges for consistent normalization
+    all_values = [val for series in avg_densities.values() for val in series]
+    max_density = max(all_values) if all_values else 1.0
+    if max_density <= 0:
+        max_density = 1.0
+
     fig, ax = plt.subplots(figsize=(10, 10))
 
     def update(frame_idx: int):
-        network.move_cars()
-
-        counts = network.edge_car_counts()
-        max_count = max(counts.values()) if counts else 1
-
-        # Build edge list and normalized colors based on counts
+        # Build edge list and normalized colors based on pre-computed densities
         edge_list = []
-        edge_values = []
+        current_densities = []
         for (u, v, k) in edge_keys:
             edge_list.append((u, v))
-            edge_values.append(counts.get((u, v, k), 0))
+            series = avg_densities.get((u, v, k), [])
+            # Use the value at frame_idx, or 0 if out of bounds
+            val = series[frame_idx] if frame_idx < len(series) else 0.0
+            current_densities.append(val)
 
-        # avoid division by zero
-        if max_count <= 0:
-            max_count = 1
-
-        norms = [val / max_count for val in edge_values]
-        # use reversed plasma so highest congestion is darkest, matching plot_density_snapshot
+        norms = [val / max_density for val in current_densities]
+        
+        # use reversed plasma so highest congestion is darkest
         cmap = plt.cm.plasma_r
         edge_colors = [cmap(n) for n in norms]
 
