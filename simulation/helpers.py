@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import osmnx as ox
 import networkx as nx
 from tqdm import tqdm
+import numpy as np
+import scipy.stats as stats
 
 
 def run_multiple_simulations(network_factory, num_runs: int = 10, num_steps: int = 50):
@@ -20,9 +22,10 @@ def run_multiple_simulations(network_factory, num_runs: int = 10, num_steps: int
 
     Returns
     -------
-    dict
-        Mapping (u, v, k) edge keys to a list of average densities over
-        time, where each list has length num_steps
+    tuple of (dict, dict)
+        - averages: Mapping (u, v, k) edge keys to a list of average densities over time
+        - all_runs: Mapping (u, v, k) edge keys to a list of lists, where each inner list
+          contains density values from one run
     """
     if num_runs <= 0:
         raise ValueError("num_runs must be positive")
@@ -33,11 +36,16 @@ def run_multiple_simulations(network_factory, num_runs: int = 10, num_steps: int
 
     # sums[(u, v, k)] -> list of length num_steps, accumulating densities
     sums = {ek: [0.0] * num_steps for ek in edge_keys}
+    # all_runs[(u, v, k)] -> list of lists, each inner list is one run's time series
+    all_runs = {ek: [] for ek in edge_keys}
 
     # Loop over runs with progress bar
     for run_idx in tqdm(range(num_runs), desc="Simulation runs", unit="run"):
         if run_idx > 0:
             network = network_factory()
+
+        # Store this run's densities
+        run_data = {ek: [] for ek in edge_keys}
 
         # For each timestep, move cars and accumulate densities
         for t in range(num_steps):
@@ -46,17 +54,22 @@ def run_multiple_simulations(network_factory, num_runs: int = 10, num_steps: int
             for (u, v, k) in edge_keys:
                 density = network.compute_edge_density((u, v))
                 sums[(u, v, k)][t] += float(density)
+                run_data[(u, v, k)].append(float(density))
+
+        # Store this run's data
+        for ek in edge_keys:
+            all_runs[ek].append(run_data[ek])
 
     # Convert sums to averages over runs
     averages = {}
     for ek, values in sums.items():
         averages[ek] = [v / num_runs for v in values]
 
-    return averages
+    return averages, all_runs
 
 
-def plot_congestion_time_series(avg_densities, top_k: int = 5, ax=None, network=None, save_path: str | None = None):
-    """Plot time series of density for the most congested edges.
+def plot_congestion_time_series(avg_densities, top_k: int = 5, ax=None, network=None, save_path: str | None = None, all_runs=None):
+    """Plot time series of density for the most congested edges with 95% confidence intervals.
 
     Parameters
     ----------
@@ -73,6 +86,9 @@ def plot_congestion_time_series(avg_densities, top_k: int = 5, ax=None, network=
         human-readable labels (e.g., street names) for plotted edges.
     save_path: str, optional
         If provided, save the figure to this path
+    all_runs: dict, optional
+        Mapping edge keys to list of lists containing individual run data.
+        If provided, 95% confidence intervals will be plotted.
 
     Returns
     -------
@@ -105,11 +121,38 @@ def plot_congestion_time_series(avg_densities, top_k: int = 5, ax=None, network=
             street = info.get("street_name", "unknown street")
             u = info["u"]
             v = info["v"]
-            label = f"{street} ({u}→{v})"
+            label = f"{street} (edge: {u}→{v})"
         else:
+            u, v, k = edge_key
             label = f"edge {u}→{v} (k={k})"
 
-        ax.plot(timesteps, series, label=label)
+        line = ax.plot(timesteps, series, label=label)
+        
+        # Add 95% confidence interval if all_runs data is provided
+        if all_runs is not None and edge_key in all_runs:
+            runs_data = all_runs[edge_key]  # List of lists, one per run
+            num_runs = len(runs_data)
+            
+            if num_runs > 1:
+                # Convert to numpy array: shape (num_runs, num_timesteps)
+                runs_array = np.array(runs_data)
+                
+                # Compute standard error for each timestep
+                std_err = np.std(runs_array, axis=0, ddof=1) / np.sqrt(num_runs)
+                
+                # 95% CI using t-distribution
+                t_critical = stats.t.ppf(0.975, num_runs - 1)
+                ci_margin = t_critical * std_err
+                
+                # Plot shaded confidence interval
+                color = line[0].get_color()
+                ax.fill_between(
+                    timesteps,
+                    np.array(series) - ci_margin,
+                    np.array(series) + ci_margin,
+                    alpha=0.2,
+                    color=color
+                )
 
     ax.set_xlabel("Timestep")
     ax.set_ylabel("Average density (cars / capacity)")

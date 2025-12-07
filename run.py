@@ -19,16 +19,16 @@ def run_traffic_experiment(
         net.init_cars()
         return net
 
-    avg_densities = run_multiple_simulations(
+    avg_densities, all_runs = run_multiple_simulations(
         network_factory=network_factory,
         num_runs=num_runs,
         num_steps=num_steps,
     )
     # Use a sample network to provide street-level labels in the plot
     sample_network = network_factory()
-    plot_congestion_time_series(avg_densities, top_k=top_k, network=sample_network)
+    plot_congestion_time_series(avg_densities, top_k=top_k, network=sample_network, all_runs=all_runs)
     plt.show()
-    return avg_densities
+    return avg_densities, all_runs
 
 def create_traffic_animation(
     network,
@@ -147,20 +147,21 @@ if __name__ == "__main__":
     # Run the main experiment once to get avg_densities
     num_runs = 20
     num_steps = 800
-    num_cars = 1000
-    top_k = 3
-    dist = 400
+    num_cars = 500
+    top_k = 5
+    dist = 800
+    address = 'Esmeralda, Buenos Aires, Argentina'
 
     # Factory to build a fresh network for each run
     def network_factory():
         net = TrafficNetwork(num_cars=num_cars)
-        net.load_road_network('Esmeralda, Buenos Aires, Argentina', dist=dist, network_type='drive')
+        net.load_road_network(address=address, dist=dist, network_type='drive')
         net.add_travel_time_attribute()
         net.init_cars()
         return net
 
     # Run multiple simulations to get averaged densities
-    avg_densities = run_multiple_simulations(
+    avg_densities, all_runs = run_multiple_simulations(
         network_factory=network_factory,
         num_runs=num_runs,
         num_steps=num_steps,
@@ -169,8 +170,8 @@ if __name__ == "__main__":
     # Use a sample network for plotting and labeling
     sample_network = network_factory()
 
-    # STEP 1: Time-series congestion plot
-    plot_congestion_time_series(avg_densities, top_k=top_k, network=sample_network, save_path="congestion_time_series.png")
+    # STEP 1: Time-series congestion plot with 95% CI
+    plot_congestion_time_series(avg_densities, top_k=top_k, network=sample_network, save_path="congestion_time_series.png", all_runs=all_runs)
     plt.show()
 
     # STEP 2: NetworkX-based density snapshot
