@@ -208,7 +208,7 @@ class TheoreticalTrafficAnalysis:
                 print(f"  {i+1}. Edge {edge_tuple}: {score:.6f}")
 
 
-def run_theoretical_analysis(address="Market St, San Francisco, CA", dist=800):
+def run_theoretical_analysis(address="Esmeralda, Buenos Aires, Argentina", dist=800):
     """
     Run complete theoretical analysis on a traffic network.
     """
